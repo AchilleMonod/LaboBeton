@@ -5,9 +5,10 @@ permissions:
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ "*,jean_ci" ]
   pull_request:
-    branches: [ "*" ]
+    types: [opened, synchronize, reopened]
+    branches: [ "*, jean_ci" ]
 
 jobs:
   test-and-lint:
