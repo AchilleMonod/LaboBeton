@@ -1,4 +1,5 @@
 import BugReport from '../models/BugReport.js';
+import sanitize from 'sanitize-html';
 
 /**
  * @desc    Créer un nouveau signalement de bug
@@ -14,12 +15,13 @@ const createBugReport = async (req, res) => {
     }
 
     await BugReport.create({ 
-        type: String(type), 
-        description: String(description), 
-        user: req.user.username 
+        type: sanitize(String(type)),
+        description: sanitize(String(description)),
+        user: sanitize(String(req.user.username))
     });
     
     res.status(201).json({ message: "Votre signalement a bien été reçu. Merci pour votre contribution !" });
 };
 
 export { createBugReport };
+

@@ -1,4 +1,6 @@
 import BugReport from '../models/BugReport.js';
+import mongoose from 'mongoose';
+import sanitize from 'sanitize-html';
 
 /**
  * @desc    Récupérer tous les signalements de bugs
@@ -16,6 +18,11 @@ const getBugReports = async (req, res) => {
  * @access  Private/Admin
  */
 const updateBugReportStatus = async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID de signalement invalide.");
+    }
+
     const { status } = req.body;
     
     if (!status) {
@@ -23,11 +30,14 @@ const updateBugReportStatus = async (req, res) => {
         throw new Error("Le statut est requis.");
     }
 
-    const bug = await BugReport.findByIdAndUpdate(req.params.id, { 
-        status: String(status), 
-        resolvedAt: status.toLowerCase() === 'resolved' ? new Date() : null 
-    }, { new: true });
-
+    const bug = await BugReport.findByIdAndUpdate(
+        new mongoose.Types.ObjectId(req.params.id),
+        {
+            status: sanitize(String(status)),
+            resolvedAt: status.toLowerCase() === 'resolved' ? new Date() : null
+        },
+        { new: true }
+    );
     if (!bug) {
         res.status(404);
         throw new Error("Signalement non trouvé.");
@@ -42,7 +52,12 @@ const updateBugReportStatus = async (req, res) => {
  * @access  Private/Admin
  */
 const deleteBugReport = async (req, res) => {
-    const bug = await BugReport.findByIdAndDelete(req.params.id);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID de signalement invalide.");
+    }
+
+    const bug = await BugReport.findByIdAndDelete(new mongoose.Types.ObjectId(req.params.id));
     if (!bug) {
         res.status(404);
         throw new Error("Signalement non trouvé.");
@@ -55,3 +70,4 @@ export {
     updateBugReportStatus,
     deleteBugReport
 };
+

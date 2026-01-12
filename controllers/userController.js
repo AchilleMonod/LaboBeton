@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import logger from '../utils/logger.js';
+import mongoose from 'mongoose';
+import sanitize from 'sanitize-html';
 
 /**
  * @desc    Créer un nouvel utilisateur (par un admin)
@@ -10,20 +12,20 @@ import logger from '../utils/logger.js';
 const createUser = async (req, res) => {
     const { username, password, role, companyName, address, contact, isActive } = req.body;
 
-    const userExists = await User.findOne({ username });
+    const userExists = await User.findOne({ username: sanitize(String(username)) });
     if (userExists) {
         res.status(400);
         throw new Error('Un utilisateur avec ce nom existe déjà.');
     }
 
     const newUser = new User({
-        username: String(username),
+        username: sanitize(String(username)),
         password: await bcrypt.hash(String(password), 10),
         role: role === 'admin' ? 'admin' : 'standard',
         isActive: Boolean(isActive),
-        companyName: String(companyName || ''),
-        address: String(address || ''),
-        contact: String(contact || '')
+        companyName: sanitize(String(companyName || '')),
+        address: sanitize(String(address || '')),
+        contact: sanitize(String(contact || ''))
     });
 
     const createdUser = await newUser.save();
@@ -54,12 +56,17 @@ const getAllUsers = async (req, res) => {
  * @access  Private/Admin
  */
 const toggleUserAccess = async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
     if (req.params.id === req.user.id) {
         res.status(400);
         throw new Error("Vous ne pouvez pas modifier votre propre statut d'accès.");
     }
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(new mongoose.Types.ObjectId(req.params.id));
     if (!user) {
         res.status(404);
         throw new Error("Utilisateur non trouvé.");
@@ -81,13 +88,17 @@ const toggleUserAccess = async (req, res) => {
  * @access  Private/Admin
  */
 const deleteUser = async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
     if (req.params.id === req.user.id) {
         res.status(400);
         throw new Error("Action non autorisée : vous ne pouvez pas supprimer votre propre compte.");
     }
 
-    const user = await User.findByIdAndDelete(req.params.id);
-
+    const user = await User.findByIdAndDelete(new mongoose.Types.ObjectId(req.params.id));
     if (!user) {
         res.status(404);
         throw new Error("Utilisateur non trouvé.");
@@ -102,3 +113,4 @@ export {
     toggleUserAccess,
     deleteUser
 };
+

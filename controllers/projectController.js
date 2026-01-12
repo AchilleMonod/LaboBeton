@@ -1,4 +1,6 @@
 import Project from '../models/Project.js';
+import mongoose from 'mongoose';
+import sanitize from 'sanitize-html';
 
 /**
  * @desc    Récupérer tous les projets de l'utilisateur
@@ -6,7 +8,11 @@ import Project from '../models/Project.js';
  * @access  Private
  */
 const getProjects = async (req, res) => {
-  const projects = await Project.find({ userId: req.user.id }).sort({ createdAt: -1 }).lean();
+  if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+    res.status(400);
+    throw new Error("ID utilisateur invalide.");
+  }
+  const projects = await Project.find({ userId: new mongoose.Types.ObjectId(req.user.id) }).sort({ createdAt: -1 }).lean();
   res.json(projects);
 };
 
@@ -17,16 +23,22 @@ const getProjects = async (req, res) => {
  */
 const createProject = async (req, res) => {
   const { name, companyId, companyName, contactName, email, phone, moa, moe } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+    res.status(400);
+    throw new Error("ID utilisateur invalide.");
+  }
+
   const newProject = new Project({
-      userId: req.user.id,
-      name: String(name),
-      companyId: companyId ? String(companyId) : null,
-      companyName: String(companyName || ''),
-      contactName: String(contactName || ''),
-      email: String(email || ''),
-      phone: String(phone || ''),
-      moa: String(moa || ''), // Maître d'ouvrage
-      moe: String(moe || '')  // Maître d'oeuvre
+      userId: new mongoose.Types.ObjectId(req.user.id),
+      name: sanitize(String(name)),
+      companyId: companyId ? sanitize(String(companyId)) : null,
+      companyName: sanitize(String(companyName || '')),
+      contactName: sanitize(String(contactName || '')),
+      email: sanitize(String(email || '')),
+      phone: sanitize(String(phone || '')),
+      moa: sanitize(String(moa || '')), // Maître d'ouvrage
+      moe: sanitize(String(moe || ''))  // Maître d'oeuvre
   });
   const createdProject = await newProject.save();
   res.status(201).json(createdProject);
@@ -38,21 +50,34 @@ const createProject = async (req, res) => {
  * @access  Private
  */
 const updateProject = async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID de projet invalide.");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
     const { name, companyId, companyName, contactName, email, phone, moa, moe } = req.body;
     
     // Whitelisting explicite des champs
     const updates = {};
-    if (name !== undefined) updates.name = String(name);
-    if (companyId !== undefined) updates.companyId = String(companyId);
-    if (companyName !== undefined) updates.companyName = String(companyName);
-    if (contactName !== undefined) updates.contactName = String(contactName);
-    if (email !== undefined) updates.email = String(email);
-    if (phone !== undefined) updates.phone = String(phone);
-    if (moa !== undefined) updates.moa = String(moa);
-    if (moe !== undefined) updates.moe = String(moe);
+    if (name !== undefined) updates.name = sanitize(String(name));
+    if (companyId !== undefined) updates.companyId = sanitize(String(companyId));
+    if (companyName !== undefined) updates.companyName = sanitize(String(companyName));
+    if (contactName !== undefined) updates.contactName = sanitize(String(contactName));
+    if (email !== undefined) updates.email = sanitize(String(email));
+    if (phone !== undefined) updates.phone = sanitize(String(phone));
+    if (moa !== undefined) updates.moa = sanitize(String(moa));
+    if (moe !== undefined) updates.moe = sanitize(String(moe));
 
     const updatedProject = await Project.findOneAndUpdate(
-        { _id: req.params.id, userId: req.user.id }, // Protection IDOR
+        {
+            _id: new mongoose.Types.ObjectId(req.params.id),
+            userId: new mongoose.Types.ObjectId(req.user.id)
+        }, // Protection IDOR
         { $set: updates },
         { new: true, runValidators: true }
     );
@@ -69,7 +94,20 @@ const updateProject = async (req, res) => {
  * @access  Private
  */
 const deleteProject = async (req, res) => {
-    const deletedProject = await Project.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID de projet invalide.");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
+    const deletedProject = await Project.findOneAndDelete({
+        _id: new mongoose.Types.ObjectId(req.params.id),
+        userId: new mongoose.Types.ObjectId(req.user.id)
+    });
     if (!deletedProject) {
         res.status(404);
         throw new Error("Projet non trouvé ou accès non autorisé.");
@@ -83,3 +121,4 @@ export {
     updateProject,
     deleteProject
 };
+

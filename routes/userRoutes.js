@@ -8,13 +8,13 @@ import {
     deleteUser
 } from '../controllers/userController.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import { checkValidation } from '../middleware/validators.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = express.Router();
 
-// Applique ces middlewares à toutes les routes définies dans ce fichier.
-// Cela garantit que seul un administrateur authentifié peut accéder à ces endpoints.
+// Toutes les routes sont protégées et réservées aux admins
 router.use(authenticateToken, requireAdmin);
 
 router.route('/')
@@ -29,9 +29,10 @@ router.route('/')
     );
 
 router.route('/:id/toggle-access')
-    .put(asyncHandler(toggleUserAccess));
+    .put(validateObjectId('id'), asyncHandler(toggleUserAccess));
 
 router.route('/:id')
-    .delete(asyncHandler(deleteUser));
+    .delete(validateObjectId('id'), asyncHandler(deleteUser));
 
 export default router;
+

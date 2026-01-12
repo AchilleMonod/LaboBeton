@@ -45,19 +45,20 @@ app.use((req, res, next) => {
   next();
 });
 
-const allowedOrigins = [
+const allowedOrigins = new Set([
   'http://localhost:5173',
   'http://localhost:8080',
   process.env.FRONTEND_URL 
-].filter(Boolean);
+].filter(Boolean));
 
+// Configuration CORS
 app.use(cors({
   origin: (origin, callback) => {
     // Autorise les requêtes sans origine (ex: Postman) et celles de la liste blanche
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.has(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Non autorisé par CORS'));
+      callback(new Error('Requête bloquée par CORS: origine non autorisée'));
     }
   },
   credentials: true
@@ -77,7 +78,6 @@ app.use(helmet({
 app.use(express.json({ limit: '5mb' })); // Augmentation limite pour les logos en base64
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(mongoSanitize({ replaceWith: '_' }));
-
 
 // --- Connexion à la base de données ---
 const connectDB = async () => {
@@ -141,7 +141,6 @@ app.use('/api/concrete-tests', concreteTestRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/bugs', bugRoutes);
 app.use('/api/admin', adminRoutes);
-
 
 // --- Service du Frontend en Production ---
 if (process.env.NODE_ENV === 'production') {

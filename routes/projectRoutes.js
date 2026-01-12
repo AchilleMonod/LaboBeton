@@ -6,6 +6,7 @@ import {
     deleteProject
 } from '../controllers/projectController.js';
 import { authenticateToken } from '../middleware/auth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = express.Router();
@@ -18,7 +19,8 @@ router.route('/')
     .post(asyncHandler(createProject));
 
 router.route('/:id')
-    .put(asyncHandler(updateProject))
-    .delete(asyncHandler(deleteProject));
+    .put(validateObjectId('id'), asyncHandler(updateProject))
+    .delete(validateObjectId('id'), asyncHandler(deleteProject));
 
 export default router;
+

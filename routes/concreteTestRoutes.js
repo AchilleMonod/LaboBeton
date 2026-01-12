@@ -8,6 +8,7 @@ import {
     deleteConcreteTest
 } from '../controllers/concreteTestController.js';
 import { authenticateToken } from '../middleware/auth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import { checkValidation } from '../middleware/validators.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
@@ -28,7 +29,8 @@ router.route('/')
     );
 
 router.route('/:id')
-    .put(asyncHandler(updateConcreteTest))
-    .delete(asyncHandler(deleteConcreteTest));
+    .put(validateObjectId('id'), asyncHandler(updateConcreteTest))
+    .delete(validateObjectId('id'), asyncHandler(deleteConcreteTest));
 
 export default router;
+

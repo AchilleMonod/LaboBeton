@@ -1,4 +1,5 @@
 import express from 'express';
+import sanitizeHtml from 'sanitize-html';
 import {
     getCompanies,
     createCompany,
@@ -11,16 +12,37 @@ import asyncHandler from '../utils/asyncHandler.js';
 
 const router = express.Router();
 
-// Applique le middleware d'authentification à toutes les routes de ce fichier.
-// Seul un utilisateur connecté peut gérer ses entreprises.
+// Sanitization helper function
+const sanitizeInput = (input) => {
+    if (input === undefined) return input;
+    return sanitizeHtml(String(input), {
+        allowedTags: [],
+        allowedAttributes: {}
+    });
+};
+
+// Apply authentication middleware to all routes
 router.use(authenticateToken);
 
-router.route('/')
-    .get(asyncHandler(getCompanies))
-    .post(asyncHandler(createCompany));
+router.get('/', asyncHandler(getCompanies));
+router.post('/', asyncHandler(async (req, res) => {
+        // Sanitize all string inputs
+        const sanitizedBody = {};
+        for (const [key, value] of Object.entries(req.body)) {
+            sanitizedBody[key] = typeof value === 'string' ? sanitizeInput(value) : value;
+        }
+        return createCompany({ ...req, body: sanitizedBody }, res);
+    }));
 
-router.route('/:id')
-    .put(isValidObjectId(), asyncHandler(updateCompany))
-    .delete(isValidObjectId(), asyncHandler(deleteCompany));
+router.put('/:id', isValidObjectId(), asyncHandler(async (req, res) => {
+        // Sanitize all string inputs
+        const sanitizedBody = {};
+        for (const [key, value] of Object.entries(req.body)) {
+            sanitizedBody[key] = typeof value === 'string' ? sanitizeInput(value) : value;
+        }
+        return updateCompany({ ...req, body: sanitizedBody }, res);
+}));
+router.delete('/:id', isValidObjectId(), asyncHandler(deleteCompany));
 
 export default router;
+

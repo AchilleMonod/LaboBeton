@@ -1,4 +1,6 @@
 import Company from '../models/Company.js';
+import mongoose from 'mongoose';
+import sanitize from 'sanitize-html';
 
 /**
  * @desc    Récupérer toutes les entreprises de l'utilisateur connecté
@@ -6,7 +8,12 @@ import Company from '../models/Company.js';
  * @access  Private
  */
 const getCompanies = async (req, res) => {
-    const companies = await Company.find({ userId: req.user.id }).sort({ name: 1 }).lean();
+    // Valider que req.user.id est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+    const companies = await Company.find({ userId: new mongoose.Types.ObjectId(req.user.id) }).sort({ name: 1 }).lean();
     res.json(companies);
 };
 
@@ -18,13 +25,19 @@ const getCompanies = async (req, res) => {
 const createCompany = async (req, res) => {
     const { name, contactName, email, phone } = req.body;
 
-    // Protection contre l'injection de masse (Mass Assignment)
+    // Valider que req.user.id est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
+    // Protection contre l'injection de masse (Mass Assignment) et XSS
     const newCompany = new Company({ 
-        userId: req.user.id, // Assure que l'entreprise est liée à l'utilisateur authentifié
-        name: String(name),
-        contactName: String(contactName || ''),
-        email: String(email || ''),
-        phone: String(phone || '')
+        userId: new mongoose.Types.ObjectId(req.user.id), // Assure que l'entreprise est liée à l'utilisateur authentifié
+        name: sanitize(String(name)),
+        contactName: sanitize(String(contactName || '')),
+        email: sanitize(String(email || '')),
+        phone: sanitize(String(phone || ''))
     });
     const createdCompany = await newCompany.save();
     res.status(201).json(createdCompany);
@@ -36,20 +49,36 @@ const createCompany = async (req, res) => {
  * @access  Private
  */
 const updateCompany = async (req, res) => {
-    const company = await Company.findOne({ _id: req.params.id, userId: req.user.id });
+    // Valider que req.params.id est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID d'entreprise invalide.");
+    }
+
+    // Valider que req.user.id est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
+    // Construire la requête avec des IDs validés
+    const company = await Company.findOne({
+        _id: new mongoose.Types.ObjectId(req.params.id),
+        userId: new mongoose.Types.ObjectId(req.user.id)
+    });
 
     if (!company) {
         res.status(404);
         throw new Error("Entreprise non trouvée ou accès non autorisé.");
     }
 
-    // Whitelisting des champs et mise à jour du document
-    const { name, contactName, email, phone } = req.body;
-    if (name !== undefined) company.name = String(name);
-    if (contactName !== undefined) company.contactName = String(contactName);
-    if (email !== undefined) company.email = String(email);
-    if (phone !== undefined) company.phone = String(phone);
-
+    // Whitelisting des champs avec la méthode suggérée et sanitization
+    const allowedFields = ['name', 'contactName', 'email', 'phone'];
+    allowedFields.forEach(field => {
+        if (req.body[field] !== undefined) {
+            company[field] = sanitize(String(req.body[field]));
+        }
+    });
     const updatedCompany = await company.save();
     
     res.json(updatedCompany);
@@ -61,7 +90,23 @@ const updateCompany = async (req, res) => {
  * @access  Private
  */
 const deleteCompany = async (req, res) => {
-    const deletedCompany = await Company.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    // Valider que req.params.id est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error("ID d'entreprise invalide.");
+    }
+
+    // Valider que req.user.id est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        res.status(400);
+        throw new Error("ID utilisateur invalide.");
+    }
+
+    const deletedCompany = await Company.findOneAndDelete({
+        _id: new mongoose.Types.ObjectId(req.params.id),
+        userId: new mongoose.Types.ObjectId(req.user.id)
+    });
+
     if (!deletedCompany) {
         res.status(404);
         throw new Error("Entreprise non trouvée ou accès non autorisé.");
@@ -75,3 +120,4 @@ export {
     updateCompany,
     deleteCompany
 };
+
