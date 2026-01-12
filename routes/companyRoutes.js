@@ -6,6 +6,7 @@ import {
     deleteCompany
 } from '../controllers/companyController.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { isValidObjectId } from '../middleware/validators.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = express.Router();
@@ -19,7 +20,7 @@ router.route('/')
     .post(asyncHandler(createCompany));
 
 router.route('/:id')
-    .put(asyncHandler(updateCompany))
-    .delete(asyncHandler(deleteCompany));
+    .put(isValidObjectId(), asyncHandler(updateCompany))
+    .delete(isValidObjectId(), asyncHandler(deleteCompany));
 
 export default router;

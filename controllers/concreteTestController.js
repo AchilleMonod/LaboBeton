@@ -81,27 +81,41 @@ const createConcreteTest = async (req, res) => {
  * @access  Private
  */
 const updateConcreteTest = async (req, res) => {
+    const test = await ConcreteTest.findOne({ _id: req.params.id, userId: req.user.id });
+
+    if (!test) {
+        res.status(404);
+        throw new Error("Rapport d'essai non trouvé ou accès non autorisé.");
+    }
+
     const input = req.body;
     
-    // Whitelist des champs de premier niveau modifiables
+    // Assignation des champs autorisés
     const allowedFields = [
-        'structureName', 'elementName', 'receptionDate', 'samplingDate',
-        'volume', 'concreteClass', 'mixType', 'formulaInfo', 
-        'manufacturer', 'manufacturingPlace', 'deliveryMethod',
-        'slump', 'samplingPlace', 'tightening', 'vibrationTime',
-        'layers', 'curing', 'testType', 'standard', 'preparation',
-        'pressMachine', 'externalTemp', 'concreteTemp'
+        'structureName', 'elementName', 'receptionDate', 'samplingDate', 
+        'volume', 'concreteClass', 'mixType', 'formulaInfo', 'manufacturer', 
+        'manufacturingPlace', 'deliveryMethod', 'slump', 'samplingPlace', 
+        'tightening', 'vibrationTime', 'layers', 'curing', 'testType', 
+        'standard', 'preparation', 'pressMachine', 'externalTemp', 'concreteTemp'
     ];
 
-    const updates = {};
     allowedFields.forEach(field => {
-        if (input[field] !== undefined) updates[field] = input[field];
+        if (input[field] !== undefined) {
+            // Utiliser un Number() ou String() selon le type attendu si nécessaire
+            if (typeof test[field] === 'number') {
+                test[field] = Number(input[field]);
+            } else {
+                test[field] = String(input[field]);
+            }
+        }
     });
+     if (input.receptionDate !== undefined) test.receptionDate = input.receptionDate;
+     if (input.samplingDate !== undefined) test.samplingDate = input.samplingDate;
 
-    // Gestion spécifique du tableau d'éprouvettes pour la mise à jour
+    // Gestion spécifique du tableau d'éprouvettes
     if (Array.isArray(input.specimens)) {
-        updates.specimens = input.specimens.map(s => ({
-            _id: s._id, // IMPORTANT: conserve l'ID pour la mise à jour du sous-document
+        test.specimens = input.specimens.map(s => ({
+            _id: s._id, // Conserve l'ID pour la mise à jour des sous-documents
             number: Number(s.number),
             age: Number(s.age),
             castingDate: s.castingDate,
@@ -117,17 +131,9 @@ const updateConcreteTest = async (req, res) => {
         }));
     }
 
-    const test = await ConcreteTest.findOneAndUpdate(
-        { _id: req.params.id, userId: req.user.id },
-        { $set: updates },
-        { new: true, runValidators: true }
-    );
+    const updatedTest = await test.save();
     
-    if (!test) {
-        res.status(404);
-        throw new Error("Rapport d'essai non trouvé ou accès non autorisé.");
-    }
-    res.json(test);
+    res.json(updatedTest);
 };
 
 /**

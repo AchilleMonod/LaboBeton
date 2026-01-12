@@ -36,26 +36,22 @@ const createCompany = async (req, res) => {
  * @access  Private
  */
 const updateCompany = async (req, res) => {
-    const { name, contactName, email, phone } = req.body;
-    
-    // Whitelisting des champs modifiables
-    const updates = {};
-    if (name !== undefined) updates.name = String(name);
-    if (contactName !== undefined) updates.contactName = String(contactName);
-    if (email !== undefined) updates.email = String(email);
-    if (phone !== undefined) updates.phone = String(phone);
+    const company = await Company.findOne({ _id: req.params.id, userId: req.user.id });
 
-    const updatedCompany = await Company.findOneAndUpdate(
-        // Le filtre garantit que l'utilisateur ne peut modifier que ses propres entreprises
-        { _id: req.params.id, userId: req.user.id }, 
-        { $set: updates },
-        { new: true, runValidators: true } // `new: true` pour retourner le document mis à jour
-    );
-    
-    if (!updatedCompany) {
+    if (!company) {
         res.status(404);
         throw new Error("Entreprise non trouvée ou accès non autorisé.");
     }
+
+    // Whitelisting des champs et mise à jour du document
+    const { name, contactName, email, phone } = req.body;
+    if (name !== undefined) company.name = String(name);
+    if (contactName !== undefined) company.contactName = String(contactName);
+    if (email !== undefined) company.email = String(email);
+    if (phone !== undefined) company.phone = String(phone);
+
+    const updatedCompany = await company.save();
+    
     res.json(updatedCompany);
 };
 
