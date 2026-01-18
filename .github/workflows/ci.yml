@@ -43,6 +43,19 @@ jobs:
           name: frontend-coverage-report
           path: client/coverage/lcov.info
 
+      - name: download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage-report
+          path: client/coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_CLIENT_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        continue-on-error: true
+
   backend:
     name: Backend - Build
     runs-on: ubuntu-latest
@@ -65,6 +78,13 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_SERVER_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        continue-on-error: true
 
   sonar-scan:
     name: SonarQube Scan
